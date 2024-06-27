@@ -14,28 +14,27 @@ type Block struct {
 	Data      string
 	PrevHash  string
 	TimeStamp string
+	Nonce     int
 }
 
 type BlockChain struct {
 	Chain []Block
 }
 
-func createHash(data string) string {
+func createHash(data string, nonce int) string {
+	data = data + string(nonce)
 	h := sha256.New()
 	h.Write([]byte(data))
 	bs := h.Sum(nil)
-	fmt.Printf("String Before Hash: %s\n", data)
 	hexString := fmt.Sprintf("%x", bs)
-
-	fmt.Printf("Hashed String: %s\n", hexString)
-
 	return hexString
 }
 func addBlock(chain *BlockChain, data string) {
 	timeStamp := time.Now().Format(time.RFC850)
 	previousHash := getPrevHash(*chain)
-	hashString := data + "%" + previousHash + "%" + timeStamp
-	block := Block{createHash(hashString), data, previousHash, timeStamp}
+	hashString := data + "%" + previousHash + "%" + timeStamp + "%"
+	block := Block{createHash(hashString, 0), data, previousHash, timeStamp, 0}
+	proofOfWork(&block)
 	chain.Chain = append(chain.Chain, block)
 }
 func getPrevHash(chain BlockChain) string {
@@ -47,10 +46,20 @@ func initChain() BlockChain {
 	data := "Genesis Block"
 	timeStamp := time.Now().Format(time.RFC850)
 	hashString := data + "%" + "%" + timeStamp
-	genesis := Block{createHash(hashString), data, "", timeStamp}
+	genesis := Block{createHash(hashString, 0), data, "", timeStamp, 0}
 	chain.Chain = append(chain.Chain, genesis)
 	return chain
 
+}
+func proofOfWork(block *Block) {
+	difficulty := 4
+	target := "0000"
+	for block.Hash[:difficulty] != target {
+		block.Nonce += 1
+		hashString := block.Data + "%" + block.PrevHash + "%" + block.TimeStamp + "%"
+		block.Hash = createHash(hashString, block.Nonce)
+	}
+	fmt.Println("Blocked Mined with Nonce: " + string(block.Nonce))
 }
 func isChainValid(chain BlockChain) bool {
 	currentBlock := chain.Chain
