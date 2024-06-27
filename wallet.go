@@ -11,7 +11,7 @@ type Wallet struct {
 
 type Transaction struct {
 	PayerKey           string
-	Payee              string
+	PayeeKey           string
 	TransactionMessage string
 }
 
@@ -32,24 +32,30 @@ func initWallet(PublicKey string) []Transaction {
 	return newWallet
 }
 
-func sendTransaction(senderWallet Wallet, recieverWallet *Wallet, message string) {
-	messageRec := Transaction{senderWallet.PublicKey, recieverWallet.PublicKey, message}
-	recieverWallet.History = append(recieverWallet.History, messageRec)
+func errorWallet(id string) []Transaction {
+	var newWallet []Transaction
+	errorMessage := "No wallet with Public Key " + id + " was found."
+	newWallet = append(newWallet, Transaction{"", "", errorMessage})
+	return newWallet
 }
 
 func saveToWallet(walletList []*Wallet, publicKey string, transaction Transaction) {
 	for i := 0; i < len(walletList); i++ {
 		if walletList[i].PublicKey == publicKey {
-			walletList[i].History = append(walletList[i].History, transaction)
+			if len(walletList[i].History) == 1 && walletList[i].History[0].TransactionMessage == "No Messages Recieved" {
+				walletList[i].History[0] = transaction
+			} else {
+				walletList[i].History = append(walletList[i].History, transaction)
+			}
 		}
 	}
 }
 func searchWallet(walletList []*Wallet, publicKey string) *Wallet {
-	var wallet *Wallet
 	for i := 0; i < len(walletList); i++ {
 		if walletList[i].PublicKey == publicKey {
-			wallet = walletList[i]
+			return walletList[i]
 		}
 	}
-	return wallet
+	err := Wallet{"", errorWallet(publicKey)}
+	return &err
 }
