@@ -91,7 +91,7 @@ var userNum2 = Wallet{userKey2, initWallet(userKey2)}
 // temporary array for storing public keys, will replace with db.
 var keyArray = []*Wallet{&userNum1, &userNum2}
 
-func returnDefinition(c *gin.Context) {
+func getWallet(c *gin.Context) {
 	publicId := c.Param("id")
 	wallet := searchWallet(keyArray, publicId)
 	c.IndentedJSON(http.StatusOK, wallet.History)
@@ -118,7 +118,7 @@ func main() {
 	fmt.Println(userKey2)
 	router := gin.Default()
 	router.GET("/blockchain", getBlockChain)
-	router.GET("/wallet/:id", returnDefinition)
+	router.GET("/wallet/:id", getWallet)
 	router.POST("/blockchain", postBlock)
 	addBlock(&chain, "First Block After Genesis")
 	addBlock(&chain, "Second Block After Genesis")
