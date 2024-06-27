@@ -33,7 +33,9 @@ func createHash(data string) string {
 }
 func addBlock(chain *BlockChain, data string) {
 	timeStamp := time.Now().Format(time.RFC850)
-	block := Block{createHash(data), data, getPrevHash(*chain), timeStamp}
+	previousHash := getPrevHash(*chain)
+	hashString := data + "%" + previousHash + "%" + timeStamp
+	block := Block{createHash(hashString), data, previousHash, timeStamp}
 	chain.Chain = append(chain.Chain, block)
 }
 func getPrevHash(chain BlockChain) string {
@@ -44,7 +46,8 @@ func initChain() BlockChain {
 	var chain BlockChain
 	data := "Genesis Block"
 	timeStamp := time.Now().Format(time.RFC850)
-	genesis := Block{createHash(data), data, "", timeStamp}
+	hashString := data + "%" + "%" + timeStamp
+	genesis := Block{createHash(hashString), data, "", timeStamp}
 	chain.Chain = append(chain.Chain, genesis)
 	return chain
 
@@ -65,30 +68,6 @@ var chain = initChain()
 
 func getBlockChain(c *gin.Context) {
 	if isChainValid(chain) {
-		c.IndentedJSON(http.StatusOK, chain.Chain)
-	} else {
-		c.IndentedJSON(http.StatusOK, "Error Found in blockchain")
-	}
-}
-func postBlock(c *gin.Context) {
-	var data struct {
-		Data string `json:"data"`
-	}
-	if err := c.BindJSON(&data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	addBlock(&chain, data.Data)
-	c.JSON(http.StatusOK, gin.H{"message": "Block added successfully", "data": data.Data})
-
-}
-func main() {
-	router := gin.Default()
-	router.GET("/blockchain", getBlockChain)
-	router.POST("/blockchain", postBlock)
-	addBlock(&chain, "First Block After Genesis")
-	addBlock(&chain, "Second Block After Genesis")
-	if isChainValid(chain) {
 		fmt.Println("Chain is valid")
 		for i := 0; i < len(chain.Chain); i++ {
 			fmt.Println("Block #", i+1)
@@ -97,8 +76,51 @@ func main() {
 			fmt.Println("	Current Hash: ", chain.Chain[i].Hash)
 			fmt.Println("	Time Stamp: ", chain.Chain[i].TimeStamp)
 		}
+		c.IndentedJSON(http.StatusOK, chain.Chain)
 	} else {
 		fmt.Println("Execution halted, invalid block in chain")
+		c.IndentedJSON(http.StatusOK, "Error Found in blockchain")
 	}
+}
+
+var userKey1 = setPublicKey(25)
+var userNum1 = Wallet{userKey1, initWallet(userKey1)}
+var userKey2 = setPublicKey(25)
+var userNum2 = Wallet{userKey2, initWallet(userKey2)}
+
+// temporary array for storing public keys, will replace with db.
+var keyArray = []*Wallet{&userNum1, &userNum2}
+
+func returnDefinition(c *gin.Context) {
+	publicId := c.Param("id")
+	wallet := searchWallet(keyArray, publicId)
+	c.IndentedJSON(http.StatusOK, wallet.History)
+}
+
+func postBlock(c *gin.Context) {
+	var data struct {
+		Data     string `json:"data"`
+		PayerKey string `json:"payerKey"`
+		PayeeKey string `json:"payeeKey"`
+	}
+	if err := c.BindJSON(&data); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	messageRec := Transaction{data.PayerKey, data.PayeeKey, data.Data}
+	saveToWallet(keyArray, data.PayeeKey, messageRec)
+
+	addBlock(&chain, data.Data)
+	c.JSON(http.StatusOK, gin.H{"message": "Block added successfully", "data": data.Data})
+}
+func main() {
+	fmt.Println(userKey1)
+	fmt.Println(userKey2)
+	router := gin.Default()
+	router.GET("/blockchain", getBlockChain)
+	router.GET("/wallet/:id", returnDefinition)
+	router.POST("/blockchain", postBlock)
+	addBlock(&chain, "First Block After Genesis")
+	addBlock(&chain, "Second Block After Genesis")
 	router.Run("localhost:8080")
 }
