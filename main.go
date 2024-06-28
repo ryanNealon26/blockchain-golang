@@ -92,13 +92,8 @@ func getBlockChain(c *gin.Context) {
 	}
 }
 
-var userKey1 = setPublicKey(25)
-var userNum1 = Wallet{userKey1, initWallet(userKey1)}
-var userKey2 = setPublicKey(25)
-var userNum2 = Wallet{userKey2, initWallet(userKey2)}
-
 // temporary array for storing public keys, will replace with db.
-var keyArray = []*Wallet{&userNum1, &userNum2}
+var keyArray []*Wallet
 
 func getWallet(c *gin.Context) {
 	publicId := c.Param("id")
@@ -106,6 +101,22 @@ func getWallet(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, wallet.History)
 }
 
+//function for posting user data, initializes crypto wallets
+
+func postUserData(c *gin.Context) {
+	var user struct {
+		Username string `json:"username"`
+	}
+	if err := c.BindJSON(&user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	key := setPublicKey(25)
+	userData := Wallet{user.Username, key, initWallet(key)}
+	keyArray = append(keyArray, &userData)
+	fmt.Println("Public Key: " + userData.PublicKey)
+	c.JSON(http.StatusOK, gin.H{"message": "UserAdded to blockchain", "data": user.Username})
+}
 func postBlock(c *gin.Context) {
 	var data struct {
 		Data     string `json:"data"`
@@ -123,12 +134,11 @@ func postBlock(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Block added successfully", "data": data.Data})
 }
 func main() {
-	fmt.Println(userKey1)
-	fmt.Println(userKey2)
 	router := gin.Default()
 	router.GET("/blockchain", getBlockChain)
 	router.GET("/wallet/:id", getWallet)
 	router.POST("/blockchain", postBlock)
+	router.POST("/wallet", postUserData)
 	addBlock(&chain, "First Block After Genesis")
 	addBlock(&chain, "Second Block After Genesis")
 	router.Run("localhost:8080")

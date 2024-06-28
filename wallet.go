@@ -5,6 +5,7 @@ import (
 )
 
 type Wallet struct {
+	User      string
 	PublicKey string
 	History   []Transaction
 }
@@ -56,6 +57,6 @@ func searchWallet(walletList []*Wallet, publicKey string) *Wallet {
 			return walletList[i]
 		}
 	}
-	err := Wallet{"", errorWallet(publicKey)}
+	err := Wallet{"Error Wallet", "", errorWallet(publicKey)}
 	return &err
 }
